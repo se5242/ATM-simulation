@@ -1,0 +1,443 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.text.DecimalFormat;
+import java.time.Year;
+import java.util.*;
+import java.util.regex.*;
+
+public class BankGUI {
+    public static void main(String[] args) {
+        EventQueue.invokeLater(() -> new BankFrame().setVisible(true));
+    }
+}
+
+class BankFrame extends JFrame {
+    private CardLayout cards = new CardLayout();
+    private JPanel root = new JPanel(cards);
+    private HashMap<String, Account> accounts = new HashMap<>(); // To store accoount details
+
+    // Login Page Components
+    private JTextField usernameField = new JTextField(15);
+    private JTextField accNoField = new JTextField(15);
+    private JPasswordField passwordField = new JPasswordField(15);
+    private JLabel loginMessage = new JLabel(" ");
+
+    // Dashboard Labels
+    private JLabel nameLabel = new JLabel();
+    private JLabel accLabel = new JLabel();
+    private JLabel yearLabel = new JLabel();
+    private JLabel typeLabel = new JLabel("Savings Account");
+    private JLabel codeLabel = new JLabel();
+    private DecimalFormat fmt = new DecimalFormat("0.00");
+    private Account activeAccount;
+
+    public BankFrame() {
+        setTitle("Bank GUI Simulator");
+        setSize(1000, 700);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLocationRelativeTo(null);
+        setResizable(false);
+
+        root.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
+
+        root.add(loginPage(), "login");
+        root.add(dashboardPage(), "dashboard");
+        root.add(transferPage(), "transfer");
+        root.add(withdrawPage(), "withdraw");
+        root.add(balancePage(), "balance");
+
+        add(root);
+        cards.show(root, "login");
+    }
+
+    // ---------------- LOGIN PAGE ----------------
+    private JPanel loginPage() {
+        JPanel p = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.insets = new Insets(10, 10, 10, 10);
+
+        JLabel title = new JLabel("Bank Login");
+        title.setFont(new Font("SansSerif", Font.BOLD, 24));
+        c.gridx = 0; c.gridy = 0; c.gridwidth = 2;
+        p.add(title, c);
+
+        c.gridwidth = 1;
+        c.gridy++;
+        p.add(new JLabel("Username:"), c);
+        c.gridx = 1; p.add(usernameField, c);
+
+        c.gridx = 0; c.gridy++;
+        p.add(new JLabel("Account No:"), c);
+        c.gridx = 1; p.add(accNoField, c);
+
+        c.gridx = 0; c.gridy++;
+        p.add(new JLabel("Password:"), c);
+        c.gridx = 1; p.add(passwordField, c);
+
+        c.gridx = 0; c.gridy++;
+        JButton loginBtn = new JButton("Login");
+        JButton clearBtn = new JButton("Clear");
+        JPanel btns = new JPanel();
+        btns.add(loginBtn); btns.add(clearBtn);
+        c.gridwidth = 2; p.add(btns, c);
+
+        c.gridy++;
+        loginMessage.setForeground(Color.RED);
+        p.add(loginMessage, c);
+
+        loginBtn.addActionListener(e -> handleLogin());
+        clearBtn.addActionListener(e -> {
+            usernameField.setText("");
+            accNoField.setText("");
+            passwordField.setText("");
+            loginMessage.setText(" ");
+        });
+
+        return p;
+    }
+
+    // ---------------- DASHBOARD ----------------
+    private JPanel dashboardPage() {
+        JPanel p = new JPanel(new BorderLayout(10, 10));
+        JLabel title = new JLabel("Account Dashboard");
+        title.setFont(new Font("SansSerif", Font.BOLD, 20));
+        p.add(title, BorderLayout.NORTH);
+
+        JPanel center = new JPanel(new GridLayout(6, 2, 10, 10));
+        center.add(new JLabel("Name:"));
+        center.add(nameLabel);
+        center.add(new JLabel("Account No:"));
+        center.add(accLabel);
+        center.add(new JLabel("Year Created:"));
+        center.add(yearLabel);
+        center.add(new JLabel("Account Type:"));
+        center.add(typeLabel);
+        center.add(new JLabel("Secret Code:"));
+        center.add(codeLabel);
+
+        JButton transferBtn = new JButton("Transfer");
+        JButton withdrawBtn = new JButton("Withdraw");
+        JButton balanceBtn = new JButton("Check Balance");
+        JButton logoutBtn = new JButton("Logout");
+        JPanel btnPanel = new JPanel();
+        btnPanel.add(transferBtn);
+        btnPanel.add(withdrawBtn);
+        btnPanel.add(balanceBtn);
+        btnPanel.add(logoutBtn);
+
+        p.add(center, BorderLayout.CENTER);
+        p.add(btnPanel, BorderLayout.SOUTH);
+
+        transferBtn.addActionListener(e -> cards.show(root, "transfer"));
+        withdrawBtn.addActionListener(e -> cards.show(root, "withdraw"));
+        balanceBtn.addActionListener(e -> cards.show(root, "balance"));
+        logoutBtn.addActionListener(e -> {
+            activeAccount = null;
+            cards.show(root, "login");
+        });
+
+        return p;
+    }
+
+    // ---------------- TRANSFER PAGE ----------------
+    private JPanel transferPage() {
+        JPanel p = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.insets = new Insets(8, 8, 8, 8);
+        c.anchor = GridBagConstraints.WEST;
+
+        JLabel title = new JLabel("Transfer Funds");
+        title.setFont(new Font("SansSerif", Font.BOLD, 20));
+        c.gridx = 0; c.gridy = 0; c.gridwidth = 2;
+        p.add(title, c);
+        c.gridwidth = 1;
+
+        JTextField senderAcc = new JTextField(15);
+        JTextField senderName = new JTextField(15);
+        JTextField receiverAcc = new JTextField(15);
+        JTextField receiverName = new JTextField(15);
+        JTextField amountField = new JTextField(10);
+        JPasswordField passField = new JPasswordField(10);
+
+        c.gridy++;
+        p.add(new JLabel("Sender Account No:"), c);
+        c.gridx = 1; p.add(senderAcc, c);
+        c.gridx = 0; c.gridy++;
+        p.add(new JLabel("Sender Name:"), c);
+        c.gridx = 1; p.add(senderName, c);
+        c.gridx = 0; c.gridy++;
+        p.add(new JLabel("Receiver Account No:"), c);
+        c.gridx = 1; p.add(receiverAcc, c);
+        c.gridx = 0; c.gridy++;
+        p.add(new JLabel("Receiver Name:"), c);
+        c.gridx = 1; p.add(receiverName, c);
+        c.gridx = 0; c.gridy++;
+        p.add(new JLabel("Amount (₹):"), c);
+        c.gridx = 1; p.add(amountField, c);
+        c.gridx = 0; c.gridy++;
+        p.add(new JLabel("Password:"), c);
+        c.gridx = 1; p.add(passField, c);
+
+        JButton sendBtn = new JButton("Send");
+        JButton backBtn = new JButton("Back");
+        c.gridy++; c.gridx = 0; c.gridwidth = 2;
+        JPanel btns = new JPanel();
+        btns.add(sendBtn);
+        btns.add(backBtn);
+        p.add(btns, c);
+
+        sendBtn.addActionListener(e -> {
+            String sender = senderAcc.getText().trim();
+            String receiver = receiverAcc.getText().trim();
+            String pass = new String(passField.getPassword());
+            double amt;
+
+            try {
+                amt = Double.parseDouble(amountField.getText().trim());
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Invalid amount");
+                return;
+            }
+
+            if (!accounts.containsKey(sender)) {
+                JOptionPane.showMessageDialog(this, "Sender not found");
+                return;
+            }
+            if (!accounts.containsKey(receiver)) {
+                JOptionPane.showMessageDialog(this, "Receiver not found");
+                return;
+            }
+
+            Account s = accounts.get(sender);
+            Account r = accounts.get(receiver);
+
+            if (!s.getPassword().equals(pass)) {
+                JOptionPane.showMessageDialog(this, "Invalid password");
+                return;
+            }
+
+            if (s.getBalance() < amt) {
+                JOptionPane.showMessageDialog(this, "Insufficient balance");
+                return;
+            }
+
+            s.withdraw(amt);
+            r.deposit(amt);
+            s.addHistory("Transferred ₹" + fmt.format(amt) + " to " + receiver);
+            r.addHistory("Received ₹" + fmt.format(amt) + " from " + sender);
+            JOptionPane.showMessageDialog(this, "Transfer successful!");
+
+            amountField.setText("");
+            senderAcc.setText("");
+            receiverAcc.setText("");
+            passField.setText("");
+        });
+
+        backBtn.addActionListener(e -> cards.show(root, "dashboard"));
+
+        return p;
+    }
+
+    // ---------------- WITHDRAW PAGE ----------------
+    private JPanel withdrawPage() {
+        JPanel p = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.insets = new Insets(10, 10, 10, 10);
+
+        JLabel title = new JLabel("Withdraw Money");
+        title.setFont(new Font("SansSerif", Font.BOLD, 20));
+        c.gridx = 0; c.gridy = 0; c.gridwidth = 2;
+        p.add(title, c);
+        c.gridwidth = 1;
+
+        JTextField accField = new JTextField(15);
+        JTextField amountField = new JTextField(10);
+        JPasswordField passField = new JPasswordField(10);
+
+        c.gridy++;
+        p.add(new JLabel("Account No:"), c);
+        c.gridx = 1; p.add(accField, c);
+        c.gridx = 0; c.gridy++;
+        p.add(new JLabel("Amount (₹):"), c);
+        c.gridx = 1; p.add(amountField, c);
+        c.gridx = 0; c.gridy++;
+        p.add(new JLabel("Password:"), c);
+        c.gridx = 1; p.add(passField, c);
+
+        JButton withdrawBtn = new JButton("Withdraw");
+        JButton backBtn = new JButton("Back");
+        JPanel btns = new JPanel();
+        btns.add(withdrawBtn);
+        btns.add(backBtn);
+        c.gridy++; c.gridwidth = 2; p.add(btns, c);
+
+        withdrawBtn.addActionListener(e -> {
+            String acc = accField.getText().trim();
+            String pass = new String(passField.getPassword());
+            double amt;
+
+            try {
+                amt = Double.parseDouble(amountField.getText().trim());
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, "Invalid amount");
+                return;
+            }
+
+            if (!accounts.containsKey(acc)) {
+                JOptionPane.showMessageDialog(this, "Account not found");
+                return;
+            }
+
+            Account a = accounts.get(acc);
+            if (!a.getPassword().equals(pass)) {
+                JOptionPane.showMessageDialog(this, "Invalid password");
+                return;
+            }
+
+            if (a.getBalance() < amt) {
+                JOptionPane.showMessageDialog(this, "Insufficient balance");
+                return;
+            }
+
+            a.withdraw(amt);
+            a.addHistory("Withdrew ₹" + fmt.format(amt));
+            JOptionPane.showMessageDialog(this, "Withdrawal successful!");
+            accField.setText("");
+            amountField.setText("");
+            passField.setText("");
+        });
+
+        backBtn.addActionListener(e -> cards.show(root, "dashboard"));
+        return p;
+    }
+
+    // ---------------- BALANCE PAGE ----------------
+    private JPanel balancePage() {
+        JPanel p = new JPanel(new BorderLayout(10, 10));
+        JLabel title = new JLabel("Check Balance");
+        title.setFont(new Font("SansSerif", Font.BOLD, 20));
+        p.add(title, BorderLayout.NORTH);
+
+        JPanel center = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.insets = new Insets(6, 6, 6, 6);
+        JTextField accField = new JTextField(15);
+        JTextArea output = new JTextArea(12, 45);
+        output.setEditable(false);
+
+        c.gridx = 0; c.gridy = 0;
+        center.add(new JLabel("Enter Account No:"), c);
+        c.gridx = 1; center.add(accField, c);
+
+        JButton showBtn = new JButton("Show Details");
+        JButton backBtn = new JButton("Back");
+        JPanel btns = new JPanel();
+        btns.add(showBtn);
+        btns.add(backBtn);
+
+        c.gridy++; c.gridx = 0; c.gridwidth = 2;
+        center.add(btns, c);
+
+        p.add(center, BorderLayout.NORTH);
+        p.add(new JScrollPane(output), BorderLayout.CENTER);
+
+        showBtn.addActionListener(e -> {
+            String acc = accField.getText().trim();
+            if (!accounts.containsKey(acc)) {
+                JOptionPane.showMessageDialog(this, "Account not found");
+                return;
+            }
+
+            Account a = accounts.get(acc);
+            StringBuilder sb = new StringBuilder();
+            sb.append("Account Details:\n");
+            sb.append("Name: ").append(a.getUsername()).append("\n");
+            sb.append("Account No: ").append(a.getAccNo()).append("\n");
+            sb.append("Type: Savings Account\n");
+            sb.append("Year Created: ").append(a.getYearCreated()).append("\n");
+            sb.append("Secret Code: ").append(a.getSecretCode()).append("\n");
+            sb.append("Balance: ₹").append(fmt.format(a.getBalance())).append("\n\n");
+            sb.append("Transaction History:\n");
+            for (String h : a.getHistory()) sb.append(" - ").append(h).append("\n");
+            output.setText(sb.toString());
+        });
+
+        backBtn.addActionListener(e -> cards.show(root, "dashboard"));
+
+        return p;
+    }
+
+    // ---------------- LOGIN LOGIC ----------------
+    private void handleLogin() {
+        String uname = usernameField.getText().trim();
+        String accNo = accNoField.getText().trim();
+        String pass = new String(passwordField.getPassword()).trim();
+
+        if (!Pattern.matches("[a-zA-Z]+", uname)) {
+            loginMessage.setText("Invalid username (only alphabets)");
+            return;
+        }
+
+        if (!Pattern.matches("ACC\\d{6}", accNo)) {
+            loginMessage.setText("Account No must be ACC + 6 digits");
+            return;
+        }
+
+        if (!Pattern.matches("^(?=.*[a-zA-Z])(?=.*\\d)(?=.*[@#$%^&+=!]).{6,}$", pass)) {
+            loginMessage.setText("Password must contain letters, numbers, special char");
+            return;
+        }
+
+        if (!accounts.containsKey(accNo)) {
+            // create new account
+            Account acc = new Account(uname, accNo, pass);
+            accounts.put(accNo, acc);
+            activeAccount = acc;
+        } else {
+            Account acc = accounts.get(accNo);
+            if (!acc.getPassword().equals(pass)) {
+                loginMessage.setText("Incorrect password");
+                return;
+            }
+            activeAccount = acc;
+        }
+
+        // Update dashboard
+        nameLabel.setText(activeAccount.getUsername());
+        accLabel.setText(activeAccount.getAccNo());
+        yearLabel.setText(String.valueOf(activeAccount.getYearCreated()));
+        codeLabel.setText(activeAccount.getSecretCode());
+        loginMessage.setText(" ");
+        cards.show(root, "dashboard");
+    }
+}
+
+// ---------------- ACCOUNT CLASS ----------------
+class Account {
+    private String username, accNo, password, secretCode;
+    private int yearCreated;
+    private double balance = 9999999999999999999990.00; // initial
+    private ArrayList<String> history = new ArrayList<>();
+
+    public Account(String username, String accNo, String password) {
+        this.username = username;
+        this.accNo = accNo;
+        this.password = password;
+        this.yearCreated = Year.now().getValue();
+        this.secretCode = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        addHistory("Account created with ₹1000");
+    }
+
+    public String getUsername() { return username; }
+    public String getAccNo() { return accNo; }
+    public String getPassword() { return password; }
+    public String getSecretCode() { return secretCode; }
+    public int getYearCreated() { return yearCreated; }
+    public double getBalance() { return balance; }
+    public ArrayList<String> getHistory() { return history; }
+
+    public void deposit(double amt) { balance += amt; }
+    public void withdraw(double amt) { balance -= amt; }
+    public void addHistory(String h) { history.add(h); }
+}
